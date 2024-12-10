@@ -1,29 +1,5 @@
 {
   "tasks": {
-    "backport": {
-      "name": "backport",
-      "requiredEnv": [
-        "BACKPORT_PR_NUMBER",
-        "GITHUB_TOKEN"
-      ],
-      "steps": [
-        {
-          "exec": "BACKPORT_HOME=$(mktemp -d) && mkdir -p ${BACKPORT_HOME} && cp .backportrc.json ${BACKPORT_HOME} && cd ${BACKPORT_HOME} && backport --dir ${BACKPORT_HOME}/cdk8s-cli --accesstoken ${GITHUB_TOKEN} --pr ${BACKPORT_PR_NUMBER} --non-interactive"
-        }
-      ]
-    },
-    "backport:1.x": {
-      "name": "backport:1.x",
-      "requiredEnv": [
-        "BACKPORT_PR_NUMBER",
-        "GITHUB_TOKEN"
-      ],
-      "steps": [
-        {
-          "exec": "BACKPORT_HOME=$(mktemp -d) && mkdir -p ${BACKPORT_HOME} && cp .backportrc.json ${BACKPORT_HOME} && cd ${BACKPORT_HOME} && backport --dir ${BACKPORT_HOME}/cdk8s-cli --accesstoken ${GITHUB_TOKEN} --pr ${BACKPORT_PR_NUMBER} --branch 1.x"
-        }
-      ]
-    },
     "build": {
       "name": "build",
       "description": "Full release build",
@@ -57,14 +33,15 @@
         "BUMPFILE": "dist/version.txt",
         "RELEASETAG": "dist/releasetag.txt",
         "RELEASE_TAG_PREFIX": "",
-        "RELEASABLE_COMMITS": "git log --no-merges --oneline $LATEST_TAG..HEAD -E --grep '^(feat|fix){1}(\\([^()[:space:]]+\\))?(!)?:[[:blank:]]+.+' --grep 'chore\\(deps\\): upgrade runtime dependencies' --grep 'chore\\(deps\\): upgrade compiler dependencies'"
+        "BUMP_PACKAGE": "commit-and-tag-version@^12",
+        "RELEASABLE_COMMITS": "git log --no-merges --oneline $LATEST_TAG..HEAD -E --grep \"^(feat|fix){1}(\\([^()[:space:]]+\\))?(!)?:[[:blank:]]+.+\" --grep 'chore\\(deps\\): upgrade runtime dependencies' --grep 'chore\\(deps\\): upgrade compiler dependencies'"
       },
       "steps": [
         {
           "builtin": "release/bump-version"
         }
       ],
-      "condition": "! git log --oneline -1 | grep -q \"chore(release):\""
+      "condition": "git log --oneline -1 | grep -qv \"chore(release):\""
     },
     "clobber": {
       "name": "clobber",
@@ -134,6 +111,9 @@
     "eslint": {
       "name": "eslint",
       "description": "Runs eslint against the codebase",
+      "env": {
+        "ESLINT_USE_FLAT_CONFIG": "false"
+      },
       "steps": [
         {
           "exec": "eslint --ext .ts,.tsx --fix --no-error-on-unmatched-pattern $@ src test build-tools projenrc .projenrc.ts",
@@ -439,7 +419,8 @@
         "BUMPFILE": "dist/version.txt",
         "RELEASETAG": "dist/releasetag.txt",
         "RELEASE_TAG_PREFIX": "",
-        "RELEASABLE_COMMITS": "git log --no-merges --oneline $LATEST_TAG..HEAD -E --grep '^(feat|fix){1}(\\([^()[:space:]]+\\))?(!)?:[[:blank:]]+.+' --grep 'chore\\(deps\\): upgrade runtime dependencies' --grep 'chore\\(deps\\): upgrade compiler dependencies'"
+        "BUMP_PACKAGE": "commit-and-tag-version@^12",
+        "RELEASABLE_COMMITS": "git log --no-merges --oneline $LATEST_TAG..HEAD -E --grep \"^(feat|fix){1}(\\([^()[:space:]]+\\))?(!)?:[[:blank:]]+.+\" --grep 'chore\\(deps\\): upgrade runtime dependencies' --grep 'chore\\(deps\\): upgrade compiler dependencies'"
       },
       "steps": [
         {
@@ -455,7 +436,7 @@
       },
       "steps": [
         {
-          "exec": "npx npm-check-updates@16 --upgrade --target=minor --peer --dep=dev --filter=typescript"
+          "exec": "npx npm-check-updates@16 --upgrade --target=minor --peer --no-deprecated --dep=dev --filter=typescript"
         },
         {
           "exec": "yarn install --check-files"
@@ -479,7 +460,7 @@
       },
       "steps": [
         {
-          "exec": "npx npm-check-updates@16 --upgrade --target=minor --peer --dep=dev --filter=projen,@cdk8s/projen-common"
+          "exec": "npx npm-check-updates@16 --upgrade --target=minor --peer --no-deprecated --dep=dev --filter=projen,@cdk8s/projen-common"
         },
         {
           "exec": "yarn install --check-files"
@@ -503,13 +484,13 @@
       },
       "steps": [
         {
-          "exec": "npx npm-check-updates@16 --upgrade --target=minor --peer --dep=dev --filter=@types/glob,@types/jest,@types/json-schema,@types/semver,backport,eslint-import-resolver-typescript,eslint-plugin-import,glob,jest,ts-jest,ts-node,typescript-json-schema"
+          "exec": "npx npm-check-updates@16 --upgrade --target=minor --peer --no-deprecated --dep=dev --filter=@types/glob,@types/jest,@types/json-schema,@types/semver,eslint-import-resolver-typescript,eslint-plugin-import,glob,jest,ts-jest,ts-node,typescript-json-schema"
         },
         {
           "exec": "yarn install --check-files"
         },
         {
-          "exec": "yarn upgrade @types/fs-extra @types/glob @types/jest @types/json-schema @types/semver @typescript-eslint/eslint-plugin @typescript-eslint/parser backport constructs eslint-import-resolver-typescript eslint-plugin-import eslint glob jest jest-junit standard-version ts-jest ts-node typescript-json-schema"
+          "exec": "yarn upgrade @stylistic/eslint-plugin @types/fs-extra @types/glob @types/jest @types/json-schema @types/semver @typescript-eslint/eslint-plugin @typescript-eslint/parser commit-and-tag-version constructs eslint-import-resolver-typescript eslint-plugin-import eslint glob jest jest-junit ts-jest ts-node typescript-json-schema"
         },
         {
           "exec": "npx projen"
@@ -527,13 +508,13 @@
       },
       "steps": [
         {
-          "exec": "npx npm-check-updates@16 --upgrade --target=minor --peer --dep=prod,optional --filter=ajv,cdk8s,cdk8s-plus-25,codemaker,colors,constructs,jsii-pacmak,jsii-rosetta,jsii-srcmak,json2jsii,semver,sscaff,table,yaml"
+          "exec": "npx npm-check-updates@16 --upgrade --target=minor --peer --no-deprecated --dep=prod,optional --filter=ajv,cdk8s,cdk8s-plus-28,codemaker,colors,constructs,jsii-pacmak,jsii-rosetta,semver,sscaff,table,yaml"
         },
         {
           "exec": "yarn install --check-files"
         },
         {
-          "exec": "yarn upgrade @types/node ajv cdk8s cdk8s-plus-25 codemaker colors constructs fs-extra jsii-pacmak jsii-rosetta jsii-srcmak json2jsii semver sscaff table yaml yargs"
+          "exec": "yarn upgrade @types/node ajv cdk8s cdk8s-plus-28 codemaker colors constructs fs-extra jsii-pacmak jsii-rosetta jsii-srcmak json2jsii semver sscaff table yaml yargs"
         },
         {
           "exec": "npx projen"
